@@ -19,10 +19,12 @@ export default async function handler(req, res) {
   try {
     const startTime = Date.now();
     
+    // api/check.js 修改 fetch 部分
     const response = await fetch(targetUrl, {
-      method: 'HEAD',
+      method: 'GET',  // 改为 GET 请求
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; LinkChecker/1.0)'
+        'User-Agent': 'Mozilla/5.0 (compatible; LinkChecker/1.0)',
+        'Range': 'bytes=0-0'  // 只请求第一个字节，减少响应时间
       },
       signal: AbortSignal.timeout(8000)
     });
