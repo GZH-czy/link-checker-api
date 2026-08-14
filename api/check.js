@@ -13,26 +13,26 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing url parameter' });
   }
 
-  // 解码 URL
   const targetUrl = decodeURIComponent(url);
   
   try {
     const startTime = Date.now();
     
-    // api/check.js 修改 fetch 部分
+    // 改用 GET 请求，只获取前 1KB 数据（减少带宽）
     const response = await fetch(targetUrl, {
-      method: 'GET',  // 改为 GET 请求
+      method: 'GET',  // 改为 GET
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; LinkChecker/1.0)',
-        'Range': 'bytes=0-0'  // 只请求第一个字节，减少响应时间
+        'Range': 'bytes=0-1024'  // 只请求前 1KB，减少响应时间
       },
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(10000)  // 延长超时到 10 秒
     });
 
     const endTime = Date.now();
     const responseTime = endTime - startTime;
 
-    const isAlive = response.status >= 200 && response.status < 400;
+    // HEAD 请求下 status 可能为空，改为检查 ok
+    const isAlive = response.ok || (response.status >= 200 && response.status < 400);
     
     let signalStrength = 0;
     if (isAlive) {
@@ -52,11 +52,12 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
+    // 超时或其他错误
     return res.status(200).json({
       url: targetUrl,
       alive: false,
       signal: 0,
-      message: error.name === 'TimeoutError' ? '连接超时' : '无法访问'
+      message: error.name === 'TimeoutError' ? '连接超时' : error.message || '无法访问'
     });
   }
 }
