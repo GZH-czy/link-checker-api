@@ -22,7 +22,11 @@ export default async function handler(req, res) {
     const response = await fetch(targetUrl, {
       method: 'GET',  // 改为 GET
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; LinkChecker/1.0)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
         'Range': 'bytes=0-1024'  // 只请求前 1KB，减少响应时间
       },
       signal: AbortSignal.timeout(10000)  // 延长超时到 10 秒
