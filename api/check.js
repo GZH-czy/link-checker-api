@@ -1,6 +1,5 @@
 // api/check.js
 export default async function handler(req, res) {
-  // 设置 CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   
@@ -18,24 +17,18 @@ export default async function handler(req, res) {
   try {
     const startTime = Date.now();
     
-    // 改用 GET 请求，只获取前 1KB 数据（减少带宽）
     const response = await fetch(targetUrl, {
-      method: 'GET',  // 改为 GET
+      method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Mozilla/5.0 (compatible; LinkChecker/1.0)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Range': 'bytes=0-1024'  // 只请求前 1KB，减少响应时间
+        'User-Agent': 'Mozilla/5.0 (compatible; LinkChecker/1.0)',
+        'Accept': '*/*',
       },
-      signal: AbortSignal.timeout(10000)  // 延长超时到 10 秒
+      signal: AbortSignal.timeout(8000)
     });
 
     const endTime = Date.now();
     const responseTime = endTime - startTime;
 
-    // HEAD 请求下 status 可能为空，改为检查 ok
     const isAlive = response.ok || (response.status >= 200 && response.status < 400);
     
     let signalStrength = 0;
@@ -56,12 +49,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    // 超时或其他错误
     return res.status(200).json({
       url: targetUrl,
       alive: false,
       signal: 0,
-      message: error.name === 'TimeoutError' ? '连接超时' : error.message || '无法访问'
+      message: error.name === 'TimeoutError' ? '连接超时' : '无法访问'
     });
   }
 }
