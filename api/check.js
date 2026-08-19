@@ -22,11 +22,7 @@ export default async function handler(req, res) {
     const response = await fetch(targetUrl, {
       method: 'GET',  // 改为 GET
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Mozilla/5.0 (compatible; LinkChecker/1.0)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
+        'User-Agent': 'Mozilla/5.0 (compatible; LinkChecker/1.0)',
         'Range': 'bytes=0-1024'  // 只请求前 1KB，减少响应时间
       },
       signal: AbortSignal.timeout(10000)  // 延长超时到 10 秒
@@ -35,15 +31,42 @@ export default async function handler(req, res) {
     const endTime = Date.now();
     const responseTime = endTime - startTime;
 
-    // HEAD 请求下 status 可能为空，改为检查 ok
-    const isAlive = response.ok || (response.status >= 200 && response.status < 400);
-    
+    // 修复：区分"服务器在线但拒绝访问"和"服务器不可用"
+    // 401/403/405/429 等状态码表示服务器在线，只是拒绝或限制访问
+    const isAlive = response.ok || (response.status >= 200 && response.status < 400) || response.status === 401 || response.status === 403 || response.status === 405 || response.status === 429;
+
     let signalStrength = 0;
     if (isAlive) {
-      if (responseTime < 500) signalStrength = 4;
-      else if (responseTime < 1000) signalStrength = 3;
-      else if (responseTime < 2000) signalStrength = 2;
-      else signalStrength = 1;
+      if (response.status === 401 || response.status === 403 || response.status === 405 || response.status === 429) {
+        // 被拒绝访问时信号强度设为 1（服务器在线但受限）
+        signalStrength = 1;
+      } else if (responseTime < 500) {
+        signalStrength = 4;
+      } else if (responseTime < 1000) {
+        signalStrength = 3;
+      } else if (responseTime < 2000) {
+        signalStrength = 2;
+      } else {
+        signalStrength = 1;
+      }
+    }
+
+    // 修复：针对不同状态提供准确的 message
+    let message;
+    if (response.ok) {
+      message = `响应时间: ${responseTime}ms`;
+    } else if (response.status >= 200 && response.status < 400) {
+      message = `响应时间: ${responseTime}ms`;
+    } else if (response.status === 401) {
+      message = '需要认证';
+    } else if (response.status === 403) {
+      message = '禁止访问';
+    } else if (response.status === 405) {
+      message = '方法不允许';
+    } else if (response.status === 429) {
+      message = '请求过多';
+    } else {
+      message = '无法访问';
     }
 
     return res.status(200).json({
@@ -52,7 +75,7 @@ export default async function handler(req, res) {
       status: response.status,
       responseTime: responseTime,
       signal: signalStrength,
-      message: isAlive ? `响应时间: ${responseTime}ms` : '无法访问'
+      message: message
     });
 
   } catch (error) {
